@@ -1,6 +1,7 @@
-from django.shortcuts import render, redirect
-from .forms import MusicianForm
-from .models import Musician
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views.decorators.http import require_POST
+from .forms import MusicianForm, AlbumForm
+from .models import Musician, Album
 
 # Create your views here.
 # 함수정의 함수이름(parameter):
@@ -41,8 +42,12 @@ def create(request):
 def detail(request, musician_pk):
     # Model.objects.get(조건=변수명)
     musician = Musician.objects.get(pk=musician_pk)
+    album_form = AlbumForm()
+    albums = musician.album_set.all()
     context = {
-        'musician' : musician
+        'musician' : musician,
+        'album_form' : album_form,
+        'albums' : albums
     }
     return render(request, 'musicians/detail.html', context)
 
@@ -64,3 +69,25 @@ def delete(request, musician_pk):
     musician = Musician.objects.get(pk=musician_pk)
     musician.delete()
     return redirect('musicians:index')
+
+@require_POST
+def album_create(request, musician_pk):
+    musician = get_object_or_404(Musician, pk=musician_pk)
+    album_form = AlbumForm(request.POST)
+    if album_form.is_valid():
+        album = album_form.save(commit=False)
+        album.musician = musician
+        album.save()
+        return redirect('musicians:detail', musician.pk)
+    else:
+        context = {
+            'album_form' : album_form,
+            'musician' : musician
+        }
+    return redirect('musicians:detail', context)
+
+@require_POST
+def album_delete(request, musician_pk, album_pk):
+    album = get_object_or_404(Album, pk=album_pk)
+    album.delete()
+    return redirect('musicians:detail', musician_pk)
